@@ -74,14 +74,11 @@
                     {% if day in events %}
                         {% for event in events[day] %}
                         {% set color_classes = get_color_classes(event.color) %}
-                        <div class="{{ color_classes.bg }} border-l-4 {{ color_classes.border }} p-1 mb-1 text-xs print:text-2xs">
+                        <div class="{{ color_classes.bg }} border-l-4 {{ color_classes.border }} p-1 mb-1 text-sm print:text-xs{% if event.is_multi_day %} border-r-2{% endif %}">
                             <div class="font-medium {{ color_classes.text }}">
                                 {{ event.title }}
                                 {% if event.start_time %}
                                     <span class="font-normal">{{ format_time_range(event.start_time, event.end_time) }}</span> 
-                                {% endif %}
-                                {% if event.is_recurring %}
-                                    <span>↻</span>
                                 {% endif %}
                             </div>
                             {% if event.description and event.description|length <= 25 %}
@@ -134,9 +131,6 @@
                             {{ event.title }}
                             {% if event.start_time %}
                                 <span class="font-normal text-gray-600">{{ format_time_range(event.start_time, event.end_time) }}</span>
-                            {% endif %}
-                            {% if event.is_recurring %}
-                                <span class="text-gray-500">↻</span>
                             {% endif %}
                         </div>
                         <div class="text-gray-700 text-sm mt-1">{{ event.description }}</div>

@@ -66,8 +66,8 @@
             border-left: 2px solid #3b82f6;
             padding: 1px 2px;
             margin: 0.5px 0;
-            font-size: 6pt;
-            line-height: 1;
+            font-size: 8pt;
+            line-height: 1.1;
             border-radius: 1px;
         }
         
@@ -79,7 +79,7 @@
         
         .event-description {
             color: #1e40af;
-            font-size: 5pt;
+            font-size: 6pt;
         }
         
         .empty-cell {
@@ -115,14 +115,11 @@
                         {% if day in events %}
                             {% for event in events[day] %}
                             {% set pdf_colors = get_pdf_colors(event.color) %}
-                            <div class="event" style="background-color: {{ pdf_colors.bg }}; border-left-color: {{ pdf_colors.border }};">
+                            <div class="event" style="background-color: {{ pdf_colors.bg }}; border-left-color: {{ pdf_colors.border }};{% if event.is_multi_day %} border-right: 2px solid {{ pdf_colors.border }};{% endif %}">
                                 <div class="event-title">
                                     {{ event.title }}
                                     {% if event.start_time %}
                                         <span style="color: #6b7280; font-size: 5pt;">{{ format_time_range(event.start_time, event.end_time) }}</span> 
-                                    {% endif %}
-                                    {% if event.is_recurring %}
-                                        <span style="color: #6b7280;">↻</span>
                                     {% endif %}
                                 </div>
                                 {% if event.description and event.description|length <= 25 %}
@@ -167,9 +164,6 @@
                         {{ event.title }}
                         {% if event.start_time %}
                             <span style="font-weight: normal; color: #6b7280;">{{ format_time_range(event.start_time, event.end_time) }}</span>
-                        {% endif %}
-                        {% if event.is_recurring %}
-                            <span style="color: #6b7280;">↻</span>
                         {% endif %}
                     </div>
                     <div style="font-size: 7pt; color: #4b5563; margin-top: 1px;">{{ event.description }}</div>

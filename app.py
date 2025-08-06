@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response
 import calendar
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from database import init_db, add_event, get_events_for_month, delete_event, update_event, get_event, get_calendar_title, update_calendar_title
 from weasyprint import HTML, CSS
 
@@ -60,6 +60,32 @@ def get_pdf_colors(color):
     """Get PDF-compatible colors"""
     return PDF_COLOR_SCHEMES.get(color, PDF_COLOR_SCHEMES['blue'])
 
+def get_next_available_color(year, month, date_str):
+    """Get next available color that doesn't clash with existing events on the same date"""
+    events = get_events_for_month(year, month)
+    used_colors = set()
+    
+    target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    
+    # Find colors used on the target date
+    for event in events:
+        event_date = datetime.strptime(event[2], '%Y-%m-%d').date()
+        event_end_date = datetime.strptime(event[9], '%Y-%m-%d').date() if len(event) > 9 and event[9] else event_date
+        
+        # If this event overlaps with our target date, mark its color as used
+        if event_date <= target_date <= event_end_date:
+            color = event[8] if len(event) > 8 and event[8] else 'blue'
+            used_colors.add(color)
+    
+    # Return first available color
+    available_colors = ['blue', 'green', 'red', 'purple', 'yellow', 'indigo', 'pink', 'gray']
+    for color in available_colors:
+        if color not in used_colors:
+            return color
+    
+    # If all colors are used, cycle through them
+    return available_colors[len(used_colors) % len(available_colors)]
+
 # Make functions available in templates
 app.jinja_env.globals.update(format_12_hour_time=format_12_hour_time)
 app.jinja_env.globals.update(format_time_range=format_time_range)
@@ -89,19 +115,29 @@ def view_calendar(year, month):
     
     events_dict = {}
     for event in events:
-        event_date = datetime.strptime(event[2], '%Y-%m-%d').day
-        if event_date not in events_dict:
-            events_dict[event_date] = []
-        events_dict[event_date].append({
-            'id': event[0],
-            'title': event[1],
-            'start_time': event[3],
-            'end_time': event[4],
-            'description': event[5],
-            'is_recurring': event[6],
-            'recurring_type': event[7],
-            'color': event[8] if len(event) > 8 else 'blue'
-        })
+        event_date = datetime.strptime(event[2], '%Y-%m-%d').date()
+        event_end_date = datetime.strptime(event[9], '%Y-%m-%d').date() if len(event) > 9 and event[9] else event_date
+        
+        # Add event to all days it spans
+        current_date = event_date
+        while current_date <= event_end_date:
+            day = current_date.day
+            if day not in events_dict:
+                events_dict[day] = []
+            events_dict[day].append({
+                'id': event[0],
+                'title': event[1],
+                'start_time': event[3],
+                'end_time': event[4],
+                'description': event[5],
+                'is_recurring': event[6],
+                'recurring_type': event[7],
+                'color': event[8] if len(event) > 8 else 'blue',
+                'event_start_date': event_date,
+                'event_end_date': event_end_date,
+                'is_multi_day': event_date != event_end_date
+            })
+            current_date += timedelta(days=1)
     
     month_name = calendar.month_name[month]
     calendar_title = get_calendar_title()
@@ -119,14 +155,23 @@ def add_event_route():
     if request.method == 'POST':
         title = request.form['title']
         date_str = request.form['date']
+        end_date_str = request.form.get('end_date', '') or date_str
         start_time_str = request.form.get('start_time', '')
         end_time_str = request.form.get('end_time', '')
         description = request.form.get('description', '')
-        color = request.form.get('color', 'blue')
+        
+        # Auto-select color if not specified or if "auto" is selected
+        selected_color = request.form.get('color', 'auto')
+        if selected_color == 'auto':
+            event_date = datetime.strptime(date_str, '%Y-%m-%d')
+            color = get_next_available_color(event_date.year, event_date.month, date_str)
+        else:
+            color = selected_color
+            
         is_recurring = 'is_recurring' in request.form
         recurring_type = request.form.get('recurring_type', 'weekly') if is_recurring else None
         
-        add_event(title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color)
+        add_event(title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color, end_date_str)
         
         event_date = datetime.strptime(date_str, '%Y-%m-%d')
         return redirect(url_for('view_calendar', year=event_date.year, month=event_date.month))
@@ -140,14 +185,23 @@ def edit_event_route(event_id):
     if request.method == 'POST':
         title = request.form['title']
         date_str = request.form['date']
+        end_date_str = request.form.get('end_date', '') or date_str
         start_time_str = request.form.get('start_time', '')
         end_time_str = request.form.get('end_time', '')
         description = request.form.get('description', '')
-        color = request.form.get('color', 'blue')
+        
+        # Auto-select color if "auto" is selected
+        selected_color = request.form.get('color', 'blue')
+        if selected_color == 'auto':
+            event_date = datetime.strptime(date_str, '%Y-%m-%d')
+            color = get_next_available_color(event_date.year, event_date.month, date_str)
+        else:
+            color = selected_color
+            
         is_recurring = 'is_recurring' in request.form
         recurring_type = request.form.get('recurring_type', 'weekly') if is_recurring else None
         
-        update_event(event_id, title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color)
+        update_event(event_id, title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color, end_date_str)
         
         event_date = datetime.strptime(date_str, '%Y-%m-%d')
         return redirect(url_for('view_calendar', year=event_date.year, month=event_date.month))
@@ -172,19 +226,29 @@ def export_pdf(year, month):
     
     events_dict = {}
     for event in events:
-        event_date = datetime.strptime(event[2], '%Y-%m-%d').day
-        if event_date not in events_dict:
-            events_dict[event_date] = []
-        events_dict[event_date].append({
-            'id': event[0],
-            'title': event[1],
-            'start_time': event[3],
-            'end_time': event[4],
-            'description': event[5],
-            'is_recurring': event[6],
-            'recurring_type': event[7],
-            'color': event[8] if len(event) > 8 else 'blue'
-        })
+        event_date = datetime.strptime(event[2], '%Y-%m-%d').date()
+        event_end_date = datetime.strptime(event[9], '%Y-%m-%d').date() if len(event) > 9 and event[9] else event_date
+        
+        # Add event to all days it spans
+        current_date = event_date
+        while current_date <= event_end_date:
+            day = current_date.day
+            if day not in events_dict:
+                events_dict[day] = []
+            events_dict[day].append({
+                'id': event[0],
+                'title': event[1],
+                'start_time': event[3],
+                'end_time': event[4],
+                'description': event[5],
+                'is_recurring': event[6],
+                'recurring_type': event[7],
+                'color': event[8] if len(event) > 8 else 'blue',
+                'event_start_date': event_date,
+                'event_end_date': event_end_date,
+                'is_multi_day': event_date != event_end_date
+            })
+            current_date += timedelta(days=1)
     
     month_name = calendar.month_name[month]
     calendar_title = get_calendar_title()
