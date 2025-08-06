@@ -114,18 +114,19 @@
                         <div class="day-number">{{ day }}</div>
                         {% if day in events %}
                             {% for event in events[day] %}
-                            <div class="event">
+                            {% set pdf_colors = get_pdf_colors(event.color) %}
+                            <div class="event" style="background-color: {{ pdf_colors.bg }}; border-left-color: {{ pdf_colors.border }};">
                                 <div class="event-title">
-                                    {% if event.start_time %}
-                                        <span style="color: #6b7280; font-size: 5pt;">{{ event.start_time }}{% if event.end_time %}-{{ event.end_time }}{% endif %}</span> 
-                                    {% endif %}
                                     {{ event.title }}
+                                    {% if event.start_time %}
+                                        <span style="color: #6b7280; font-size: 5pt;">{{ format_time_range(event.start_time, event.end_time) }}</span> 
+                                    {% endif %}
                                     {% if event.is_recurring %}
                                         <span style="color: #6b7280;">↻</span>
                                     {% endif %}
                                 </div>
-                                {% if event.description %}
-                                    <div class="event-description">{{ event.description[:40] }}{% if event.description|length > 40 %}...{% endif %}</div>
+                                {% if event.description and event.description|length <= 25 %}
+                                    <div class="event-description">{{ event.description }}</div>
                                 {% endif %}
                             </div>
                             {% endfor %}
@@ -137,5 +138,45 @@
             {% endfor %}
         </tbody>
     </table>
+    
+    <!-- Legend for events with long descriptions -->
+    {% set legend_events = [] %}
+    {% set seen_event_ids = [] %}
+    {% for week in month_days %}
+        {% for day in week %}
+            {% if day != 0 and day in events %}
+                {% for event in events[day] %}
+                    {% if should_show_in_legend(event.description, 25) and event.id not in seen_event_ids %}
+                        {% set _ = legend_events.append(event) %}
+                        {% set _ = seen_event_ids.append(event.id) %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+    
+    {% if legend_events %}
+    <div style="margin-top: 15px; page-break-inside: avoid;">
+        <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 8px; color: #1f2937;">Event Details</h3>
+        {% for event in legend_events %}
+            {% set pdf_colors = get_pdf_colors(event.color) %}
+            <div style="margin-bottom: 6px; display: flex; align-items: flex-start;">
+                <div style="width: 8px; height: 8px; background-color: {{ pdf_colors.bg }}; border-left: 3px solid {{ pdf_colors.border }}; margin-right: 8px; margin-top: 2px; flex-shrink: 0;"></div>
+                <div>
+                    <div style="font-weight: 600; font-size: 8pt; color: #1f2937;">
+                        {{ event.title }}
+                        {% if event.start_time %}
+                            <span style="font-weight: normal; color: #6b7280;">{{ format_time_range(event.start_time, event.end_time) }}</span>
+                        {% endif %}
+                        {% if event.is_recurring %}
+                            <span style="color: #6b7280;">↻</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 7pt; color: #4b5563; margin-top: 1px;">{{ event.description }}</div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </body>
 </html>

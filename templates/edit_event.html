@@ -38,6 +38,21 @@
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ event[5] or '' }}</textarea>
             </div>
             
+            <div>
+                <label for="color" class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                <select id="color" name="color" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="blue" {% if event[8] == 'blue' or not event[8] %}selected{% endif %}>Blue</option>
+                    <option value="green" {% if event[8] == 'green' %}selected{% endif %}>Green</option>
+                    <option value="red" {% if event[8] == 'red' %}selected{% endif %}>Red</option>
+                    <option value="purple" {% if event[8] == 'purple' %}selected{% endif %}>Purple</option>
+                    <option value="yellow" {% if event[8] == 'yellow' %}selected{% endif %}>Yellow</option>
+                    <option value="indigo" {% if event[8] == 'indigo' %}selected{% endif %}>Indigo</option>
+                    <option value="pink" {% if event[8] == 'pink' %}selected{% endif %}>Pink</option>
+                    <option value="gray" {% if event[8] == 'gray' %}selected{% endif %}>Gray</option>
+                </select>
+            </div>
+            
             <div class="border-t pt-4">
                 <h3 class="text-lg font-medium text-gray-700 mb-3">Repeat Options</h3>
                 

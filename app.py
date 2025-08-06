@@ -6,6 +6,68 @@ from weasyprint import HTML, CSS
 
 app = Flask(__name__)
 
+def format_12_hour_time(time_str):
+    """Convert 24-hour time string to 12-hour format"""
+    if not time_str:
+        return ''
+    try:
+        time_obj = datetime.strptime(time_str, '%H:%M').time()
+        return time_obj.strftime('%I:%M %p').lstrip('0')
+    except:
+        return time_str
+
+def format_time_range(start_time, end_time):
+    """Format time range in 12-hour format"""
+    if start_time and end_time:
+        return f"{format_12_hour_time(start_time)}-{format_12_hour_time(end_time)}"
+    elif start_time:
+        return format_12_hour_time(start_time)
+    return ''
+
+# Color mapping for events
+COLOR_SCHEMES = {
+    'blue': {'bg': 'bg-blue-100', 'border': 'border-blue-500', 'text': 'text-blue-800'},
+    'green': {'bg': 'bg-green-100', 'border': 'border-green-500', 'text': 'text-green-800'},
+    'red': {'bg': 'bg-red-100', 'border': 'border-red-500', 'text': 'text-red-800'},
+    'purple': {'bg': 'bg-purple-100', 'border': 'border-purple-500', 'text': 'text-purple-800'},
+    'yellow': {'bg': 'bg-yellow-100', 'border': 'border-yellow-500', 'text': 'text-yellow-800'},
+    'indigo': {'bg': 'bg-indigo-100', 'border': 'border-indigo-500', 'text': 'text-indigo-800'},
+    'pink': {'bg': 'bg-pink-100', 'border': 'border-pink-500', 'text': 'text-pink-800'},
+    'gray': {'bg': 'bg-gray-100', 'border': 'border-gray-500', 'text': 'text-gray-800'}
+}
+
+def get_color_classes(color):
+    """Get Tailwind CSS classes for event color"""
+    return COLOR_SCHEMES.get(color, COLOR_SCHEMES['blue'])
+
+def should_show_in_legend(description, max_length=25):
+    """Determine if event should show in legend due to long description"""
+    return description and len(description) > max_length
+
+# PDF color mapping (grayscale with different intensities)
+PDF_COLOR_SCHEMES = {
+    'blue': {'bg': '#E6F3FF', 'border': '#3B82F6'},
+    'green': {'bg': '#E6F7E6', 'border': '#10B981'},
+    'red': {'bg': '#FEE6E6', 'border': '#EF4444'},
+    'purple': {'bg': '#F3E6FF', 'border': '#8B5CF6'},
+    'yellow': {'bg': '#FFFCE6', 'border': '#F59E0B'},
+    'indigo': {'bg': '#E6E6FF', 'border': '#6366F1'},
+    'pink': {'bg': '#FFE6F3', 'border': '#EC4899'},
+    'gray': {'bg': '#F3F4F6', 'border': '#6B7280'}
+}
+
+def get_pdf_colors(color):
+    """Get PDF-compatible colors"""
+    return PDF_COLOR_SCHEMES.get(color, PDF_COLOR_SCHEMES['blue'])
+
+# Make functions available in templates
+app.jinja_env.globals.update(format_12_hour_time=format_12_hour_time)
+app.jinja_env.globals.update(format_time_range=format_time_range)
+app.jinja_env.globals.update(get_color_classes=get_color_classes)
+app.jinja_env.globals.update(get_pdf_colors=get_pdf_colors)
+app.jinja_env.globals.update(should_show_in_legend=should_show_in_legend)
+app.jinja_env.globals.update(COLOR_SCHEMES=COLOR_SCHEMES)
+
 with app.app_context():
     init_db()
 
@@ -37,7 +99,8 @@ def view_calendar(year, month):
             'end_time': event[4],
             'description': event[5],
             'is_recurring': event[6],
-            'recurring_type': event[7]
+            'recurring_type': event[7],
+            'color': event[8] if len(event) > 8 else 'blue'
         })
     
     month_name = calendar.month_name[month]
@@ -59,10 +122,11 @@ def add_event_route():
         start_time_str = request.form.get('start_time', '')
         end_time_str = request.form.get('end_time', '')
         description = request.form.get('description', '')
+        color = request.form.get('color', 'blue')
         is_recurring = 'is_recurring' in request.form
         recurring_type = request.form.get('recurring_type', 'weekly') if is_recurring else None
         
-        add_event(title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type)
+        add_event(title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color)
         
         event_date = datetime.strptime(date_str, '%Y-%m-%d')
         return redirect(url_for('view_calendar', year=event_date.year, month=event_date.month))
@@ -79,10 +143,11 @@ def edit_event_route(event_id):
         start_time_str = request.form.get('start_time', '')
         end_time_str = request.form.get('end_time', '')
         description = request.form.get('description', '')
+        color = request.form.get('color', 'blue')
         is_recurring = 'is_recurring' in request.form
         recurring_type = request.form.get('recurring_type', 'weekly') if is_recurring else None
         
-        update_event(event_id, title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type)
+        update_event(event_id, title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color)
         
         event_date = datetime.strptime(date_str, '%Y-%m-%d')
         return redirect(url_for('view_calendar', year=event_date.year, month=event_date.month))
@@ -117,7 +182,8 @@ def export_pdf(year, month):
             'end_time': event[4],
             'description': event[5],
             'is_recurring': event[6],
-            'recurring_type': event[7]
+            'recurring_type': event[7],
+            'color': event[8] if len(event) > 8 else 'blue'
         })
     
     month_name = calendar.month_name[month]

@@ -73,18 +73,19 @@
                     <div class="font-semibold text-gray-800 mb-1">{{ day }}</div>
                     {% if day in events %}
                         {% for event in events[day] %}
-                        <div class="bg-blue-100 border-l-4 border-blue-500 p-1 mb-1 text-xs print:text-2xs">
-                            <div class="font-medium text-blue-800">
-                                {% if event.start_time %}
-                                    <span class="text-blue-600">{{ event.start_time }}{% if event.end_time %}-{{ event.end_time }}{% endif %}</span> 
-                                {% endif %}
+                        {% set color_classes = get_color_classes(event.color) %}
+                        <div class="{{ color_classes.bg }} border-l-4 {{ color_classes.border }} p-1 mb-1 text-xs print:text-2xs">
+                            <div class="font-medium {{ color_classes.text }}">
                                 {{ event.title }}
+                                {% if event.start_time %}
+                                    <span class="font-normal">{{ format_time_range(event.start_time, event.end_time) }}</span> 
+                                {% endif %}
                                 {% if event.is_recurring %}
-                                    <span class="text-blue-500">↻</span>
+                                    <span>↻</span>
                                 {% endif %}
                             </div>
-                            {% if event.description %}
-                                <div class="text-blue-600 mt-1">{{ event.description[:30] }}{% if event.description|length > 30 %}...{% endif %}</div>
+                            {% if event.description and event.description|length <= 25 %}
+                                <div class="{{ color_classes.text }} opacity-75 mt-1">{{ event.description }}</div>
                             {% endif %}
                             <div class="flex gap-1 mt-1 no-print">
                                 <a href="{{ url_for('edit_event_route', event_id=event.id) }}" 
@@ -103,5 +104,47 @@
         </div>
         {% endfor %}
     </div>
+    
+    <!-- Legend for events with long descriptions -->
+    {% set legend_events = [] %}
+    {% set seen_event_ids = [] %}
+    {% for week in month_days %}
+        {% for day in week %}
+            {% if day != 0 and day in events %}
+                {% for event in events[day] %}
+                    {% if should_show_in_legend(event.description, 25) and event.id not in seen_event_ids %}
+                        {% set _ = legend_events.append(event) %}
+                        {% set _ = seen_event_ids.append(event.id) %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+    
+    {% if legend_events %}
+    <div class="mt-6 bg-white rounded-lg shadow-md p-4 no-print">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Event Details</h3>
+        <div class="space-y-2">
+            {% for event in legend_events %}
+                {% set color_classes = get_color_classes(event.color) %}
+                <div class="flex items-start space-x-3">
+                    <div class="w-4 h-4 {{ color_classes.bg }} {{ color_classes.border }} border-l-4 rounded-sm flex-shrink-0 mt-0.5"></div>
+                    <div>
+                        <div class="font-medium {{ color_classes.text }}">
+                            {{ event.title }}
+                            {% if event.start_time %}
+                                <span class="font-normal text-gray-600">{{ format_time_range(event.start_time, event.end_time) }}</span>
+                            {% endif %}
+                            {% if event.is_recurring %}
+                                <span class="text-gray-500">↻</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-gray-700 text-sm mt-1">{{ event.description }}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

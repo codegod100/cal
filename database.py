@@ -43,6 +43,11 @@ def init_db():
         cursor.execute('ALTER TABLE events ADD COLUMN end_time TEXT')
     except sqlite3.OperationalError:
         pass
+        
+    try:
+        cursor.execute('ALTER TABLE events ADD COLUMN color TEXT DEFAULT "blue"')
+    except sqlite3.OperationalError:
+        pass
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS settings (
@@ -56,24 +61,15 @@ def init_db():
     conn.commit()
     conn.close()
 
-def add_event(title, date, description='', start_time=None, end_time=None, is_recurring=False, recurring_type=None):
+def add_event(title, date, description='', start_time=None, end_time=None, is_recurring=False, recurring_type=None, color='blue'):
     conn = sqlite3.connect('calendar.db')
     cursor = conn.cursor()
     
-    if is_recurring and recurring_type == 'weekly':
-        # Create recurring events for the next 12 months
-        base_date = datetime.strptime(date, '%Y-%m-%d').date()
-        for i in range(52):  # 52 weeks = ~1 year
-            recurring_date = base_date + timedelta(weeks=i)
-            cursor.execute('''
-                INSERT INTO events (title, date, start_time, end_time, description, is_recurring, recurring_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (title, recurring_date.strftime('%Y-%m-%d'), start_time, end_time, description, is_recurring, recurring_type))
-    else:
-        cursor.execute('''
-            INSERT INTO events (title, date, start_time, end_time, description, is_recurring, recurring_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (title, date, start_time, end_time, description, is_recurring, recurring_type))
+    # Always store only one event, even if recurring
+    cursor.execute('''
+        INSERT INTO events (title, date, start_time, end_time, description, is_recurring, recurring_type, color)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (title, date, start_time, end_time, description, is_recurring, recurring_type, color))
     
     conn.commit()
     conn.close()
@@ -82,16 +78,50 @@ def get_events_for_month(year, month):
     conn = sqlite3.connect('calendar.db')
     cursor = conn.cursor()
     
+    # Get all events (including recurring ones from any date)
     cursor.execute('''
-        SELECT id, title, date, start_time, end_time, description, is_recurring, recurring_type
+        SELECT id, title, date, start_time, end_time, description, is_recurring, recurring_type, color
         FROM events
-        WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?
         ORDER BY date, start_time
-    ''', (str(year), f'{month:02d}'))
+    ''')
     
-    events = cursor.fetchall()
+    all_events = cursor.fetchall()
     conn.close()
-    return events
+    
+    # Generate events for the requested month
+    month_events = []
+    target_month_start = datetime(year, month, 1).date()
+    if month == 12:
+        target_month_end = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+    else:
+        target_month_end = datetime(year, month + 1, 1).date() - timedelta(days=1)
+    
+    for event in all_events:
+        event_id, title, date_str, start_time, end_time, description, is_recurring, recurring_type, color = event
+        event_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        if is_recurring and recurring_type == 'weekly':
+            # Generate weekly recurring instances for this month
+            current_date = event_date
+            # Find the first occurrence in or before the target month
+            while current_date > target_month_start:
+                current_date -= timedelta(weeks=1)
+            while current_date < target_month_start:
+                current_date += timedelta(weeks=1)
+            
+            # Add all weekly occurrences within the month
+            while current_date <= target_month_end:
+                month_events.append((event_id, title, current_date.strftime('%Y-%m-%d'), 
+                                   start_time, end_time, description, is_recurring, recurring_type, color))
+                current_date += timedelta(weeks=1)
+        else:
+            # Non-recurring event - include only if it's in the target month
+            if target_month_start <= event_date <= target_month_end:
+                month_events.append(event)
+    
+    # Sort by date and time
+    month_events.sort(key=lambda e: (e[2], e[3] or ''))
+    return month_events
 
 def delete_event(event_id):
     conn = sqlite3.connect('calendar.db')
@@ -102,15 +132,15 @@ def delete_event(event_id):
     conn.commit()
     conn.close()
 
-def update_event(event_id, title, date, description='', start_time=None, end_time=None, is_recurring=False, recurring_type=None):
+def update_event(event_id, title, date, description='', start_time=None, end_time=None, is_recurring=False, recurring_type=None, color='blue'):
     conn = sqlite3.connect('calendar.db')
     cursor = conn.cursor()
     
     cursor.execute('''
         UPDATE events 
-        SET title = ?, date = ?, start_time = ?, end_time = ?, description = ?, is_recurring = ?, recurring_type = ?
+        SET title = ?, date = ?, start_time = ?, end_time = ?, description = ?, is_recurring = ?, recurring_type = ?, color = ?
         WHERE id = ?
-    ''', (title, date, start_time, end_time, description, is_recurring, recurring_type, event_id))
+    ''', (title, date, start_time, end_time, description, is_recurring, recurring_type, color, event_id))
     
     conn.commit()
     conn.close()
@@ -119,7 +149,7 @@ def get_event(event_id):
     conn = sqlite3.connect('calendar.db')
     cursor = conn.cursor()
     
-    cursor.execute('SELECT id, title, date, start_time, end_time, description, is_recurring, recurring_type FROM events WHERE id = ?', (event_id,))
+    cursor.execute('SELECT id, title, date, start_time, end_time, description, is_recurring, recurring_type, color FROM events WHERE id = ?', (event_id,))
     event = cursor.fetchone()
     
     conn.close()
