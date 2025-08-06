@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ calendar_title }} - {{ month_name }} {{ year }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0.3in;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            font-size: 8pt;
+            line-height: 1.1;
+        }
+        
+        .calendar-header {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        
+        .calendar-header h1 {
+            font-size: 18pt;
+            color: #1f2937;
+            margin: 0;
+            font-weight: bold;
+        }
+        
+        .calendar-grid {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        
+        .calendar-grid th,
+        .calendar-grid td {
+            border: 1px solid #374151;
+            vertical-align: top;
+            padding: 2px;
+            height: 70px;
+        }
+        
+        .calendar-grid th {
+            background-color: #1f2937;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            padding: 4px 2px;
+            height: auto;
+            font-size: 8pt;
+        }
+        
+        .day-number {
+            font-weight: bold;
+            font-size: 9pt;
+            color: #1f2937;
+            margin-bottom: 1px;
+        }
+        
+        .event {
+            background-color: #dbeafe;
+            border-left: 2px solid #3b82f6;
+            padding: 1px 2px;
+            margin: 0.5px 0;
+            font-size: 6pt;
+            line-height: 1;
+            border-radius: 1px;
+        }
+        
+        .event-title {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 0px;
+        }
+        
+        .event-description {
+            color: #1e40af;
+            font-size: 5pt;
+        }
+        
+        .empty-cell {
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <div class="calendar-header">
+        <h1>{{ calendar_title }}</h1>
+        <h2 style="font-size: 12pt; color: #4b5563; margin: 2px 0 0 0;">{{ month_name }} {{ year }}</h2>
+    </div>
+    
+    <table class="calendar-grid">
+        <thead>
+            <tr>
+                <th>Sunday</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+                <th>Saturday</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in month_days %}
+            <tr>
+                {% for day in week %}
+                <td {% if day == 0 %}class="empty-cell"{% endif %}>
+                    {% if day != 0 %}
+                        <div class="day-number">{{ day }}</div>
+                        {% if day in events %}
+                            {% for event in events[day] %}
+                            <div class="event">
+                                <div class="event-title">
+                                    {% if event.start_time %}
+                                        <span style="color: #6b7280; font-size: 5pt;">{{ event.start_time }}{% if event.end_time %}-{{ event.end_time }}{% endif %}</span> 
+                                    {% endif %}
+                                    {{ event.title }}
+                                    {% if event.is_recurring %}
+                                        <span style="color: #6b7280;">↻</span>
+                                    {% endif %}
+                                </div>
+                                {% if event.description %}
+                                    <div class="event-description">{{ event.description[:40] }}{% if event.description|length > 40 %}...{% endif %}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
