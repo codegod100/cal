@@ -7,7 +7,7 @@
     <style>
         @page {
             size: A4 landscape;
-            margin: 0.3in;
+            margin: 0.2in;
         }
         
         body {
@@ -20,11 +20,11 @@
         
         .calendar-header {
             text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         
         .calendar-header h1 {
-            font-size: 18pt;
+            font-size: 16pt;
             color: #1f2937;
             margin: 0;
             font-weight: bold;
@@ -41,7 +41,7 @@
             border: 1px solid #374151;
             vertical-align: top;
             padding: 2px;
-            height: 70px;
+            height: 65px;
         }
         
         .calendar-grid th {
@@ -118,10 +118,10 @@
                             <div class="event" style="background-color: {{ pdf_colors.bg }}; border-left-color: {{ pdf_colors.border }};{% if event.is_multi_day %} border-right: 2px solid {{ pdf_colors.border }};{% endif %}">
                                 <div class="event-title">
                                     {{ event.title }}
-                                    {% if event.start_time %}
-                                        <span style="color: #6b7280; font-size: 5pt;">{{ format_time_range(event.start_time, event.end_time) }}</span> 
-                                    {% endif %}
                                 </div>
+                                {% if event.start_time %}
+                                    <div style="color: #6b7280; font-size: 7pt; margin-top: 1px;">{{ format_time_range(event.start_time, event.end_time) }}</div>
+                                {% endif %}
                                 {% if event.description and event.description|length <= 25 %}
                                     <div class="event-description">{{ event.description }}</div>
                                 {% endif %}
@@ -153,19 +153,19 @@
     {% endfor %}
     
     {% if legend_events %}
-    <div style="margin-top: 15px; page-break-inside: avoid;">
-        <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 8px; color: #1f2937;">Event Details</h3>
+    <div style="margin-top: 10px; page-break-inside: avoid;">
+        <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 5px; color: #1f2937;">Event Details</h3>
         {% for event in legend_events %}
             {% set pdf_colors = get_pdf_colors(event.color) %}
-            <div style="margin-bottom: 6px; display: flex; align-items: flex-start;">
+            <div style="margin-bottom: 4px; display: flex; align-items: flex-start;">
                 <div style="width: 8px; height: 8px; background-color: {{ pdf_colors.bg }}; border-left: 3px solid {{ pdf_colors.border }}; margin-right: 8px; margin-top: 2px; flex-shrink: 0;"></div>
                 <div>
                     <div style="font-weight: 600; font-size: 8pt; color: #1f2937;">
                         {{ event.title }}
-                        {% if event.start_time %}
-                            <span style="font-weight: normal; color: #6b7280;">{{ format_time_range(event.start_time, event.end_time) }}</span>
-                        {% endif %}
                     </div>
+                    {% if event.start_time %}
+                        <div style="font-weight: normal; color: #6b7280; font-size: 7pt; margin-top: 1px;">{{ format_time_range(event.start_time, event.end_time) }}</div>
+                    {% endif %}
                     <div style="font-size: 7pt; color: #4b5563; margin-top: 1px;">{{ event.description }}</div>
                 </div>
             </div>
