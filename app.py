@@ -135,7 +135,8 @@ def view_calendar(year, month):
                 'color': event[8] if len(event) > 8 else 'blue',
                 'event_start_date': event_date,
                 'event_end_date': event_end_date,
-                'is_multi_day': event_date != event_end_date
+                'is_multi_day': event_date != event_end_date,
+                'url': event[10] if len(event) > 10 else None
             })
             current_date += timedelta(days=1)
     
@@ -159,6 +160,7 @@ def add_event_route():
         start_time_str = request.form.get('start_time', '')
         end_time_str = request.form.get('end_time', '')
         description = request.form.get('description', '')
+        url = request.form.get('url', '')
         
         # Auto-select color if not specified or if "auto" is selected
         selected_color = request.form.get('color', 'auto')
@@ -171,7 +173,7 @@ def add_event_route():
         is_recurring = 'is_recurring' in request.form
         recurring_type = request.form.get('recurring_type', 'weekly') if is_recurring else None
         
-        add_event(title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color, end_date_str)
+        add_event(title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color, end_date_str, url or None)
         
         event_date = datetime.strptime(date_str, '%Y-%m-%d')
         return redirect(url_for('view_calendar', year=event_date.year, month=event_date.month))
@@ -189,6 +191,7 @@ def edit_event_route(event_id):
         start_time_str = request.form.get('start_time', '')
         end_time_str = request.form.get('end_time', '')
         description = request.form.get('description', '')
+        url = request.form.get('url', '')
         
         # Auto-select color if "auto" is selected
         selected_color = request.form.get('color', 'blue')
@@ -201,7 +204,7 @@ def edit_event_route(event_id):
         is_recurring = 'is_recurring' in request.form
         recurring_type = request.form.get('recurring_type', 'weekly') if is_recurring else None
         
-        update_event(event_id, title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color, end_date_str)
+        update_event(event_id, title, date_str, description, start_time_str or None, end_time_str or None, is_recurring, recurring_type, color, end_date_str, url or None)
         
         event_date = datetime.strptime(date_str, '%Y-%m-%d')
         return redirect(url_for('view_calendar', year=event_date.year, month=event_date.month))
@@ -246,7 +249,8 @@ def export_pdf(year, month):
                 'color': event[8] if len(event) > 8 else 'blue',
                 'event_start_date': event_date,
                 'event_end_date': event_end_date,
-                'is_multi_day': event_date != event_end_date
+                'is_multi_day': event_date != event_end_date,
+                'url': event[10] if len(event) > 10 else None
             })
             current_date += timedelta(days=1)
     

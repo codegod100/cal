@@ -102,14 +102,14 @@
         {% endfor %}
     </div>
     
-    <!-- Legend for events with long descriptions -->
+    <!-- Legend for events with long descriptions or URLs -->
     {% set legend_events = [] %}
     {% set seen_event_ids = [] %}
     {% for week in month_days %}
         {% for day in week %}
             {% if day != 0 and day in events %}
                 {% for event in events[day] %}
-                    {% if should_show_in_legend(event.description, 25) and event.id not in seen_event_ids %}
+                    {% if (should_show_in_legend(event.description, 25) or event.url) and event.id not in seen_event_ids %}
                         {% set _ = legend_events.append(event) %}
                         {% set _ = seen_event_ids.append(event.id) %}
                     {% endif %}
@@ -126,14 +126,26 @@
                 {% set color_classes = get_color_classes(event.color) %}
                 <div class="flex items-start space-x-3">
                     <div class="w-4 h-4 {{ color_classes.bg }} {{ color_classes.border }} border-l-4 rounded-sm flex-shrink-0 mt-0.5"></div>
-                    <div>
+                    <div class="flex-1">
                         <div class="font-medium {{ color_classes.text }}">
                             {{ event.title }}
                             {% if event.start_time %}
                                 <span class="font-normal text-gray-600">{{ format_time_range(event.start_time, event.end_time) }}</span>
                             {% endif %}
                         </div>
-                        <div class="text-gray-700 text-sm mt-1">{{ event.description }}</div>
+                        {% if event.description %}
+                            <div class="text-gray-700 text-sm mt-1">{{ event.description }}</div>
+                        {% endif %}
+                        {% if event.url %}
+                            <div class="flex items-center space-x-3 mt-2">
+                                <div class="text-sm">
+                                    <a href="{{ event.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 underline">{{ event.url }}</a>
+                                </div>
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ event.url | urlencode }}" 
+                                     alt="QR Code for {{ event.url }}" 
+                                     class="w-16 h-16 border border-gray-300 rounded">
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}
