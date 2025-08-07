@@ -18,6 +18,21 @@
             line-height: 1.1;
         }
         
+        .main-container {
+            display: flex;
+            gap: 10px;
+            height: 100%;
+        }
+        
+        .calendar-section {
+            flex: 2;
+        }
+        
+        .details-section {
+            flex: 1;
+            min-width: 0;
+        }
+        
         .calendar-header {
             text-align: center;
             margin-bottom: 8px;
@@ -85,6 +100,25 @@
         .empty-cell {
             background-color: #f9fafb;
         }
+        
+        .details-header {
+            font-size: 9pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #1f2937;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 2px;
+        }
+        
+        .event-detail {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .event-detail:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -93,102 +127,100 @@
         <h2 style="font-size: 12pt; color: #4b5563; margin: 2px 0 0 0;">{{ month_name }} {{ year }}</h2>
     </div>
     
-    <table class="calendar-grid">
-        <thead>
-            <tr>
-                <th>Sunday</th>
-                <th>Monday</th>
-                <th>Tuesday</th>
-                <th>Wednesday</th>
-                <th>Thursday</th>
-                <th>Friday</th>
-                <th>Saturday</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for week in month_days %}
-            <tr>
-                {% for day in week %}
-                <td {% if day == 0 %}class="empty-cell"{% endif %}>
-                    {% if day != 0 %}
-                        <div class="day-number">{{ day }}</div>
-                        {% if day in events %}
-                            {% for event in events[day] %}
-                            {% set pdf_colors = get_pdf_colors(event.color) %}
-                            <div class="event" style="background-color: {{ pdf_colors.bg }}; border-left-color: {{ pdf_colors.border }};{% if event.is_multi_day %} border-right: 2px solid {{ pdf_colors.border }};{% endif %}">
-                                <div class="event-title">
-                                    {{ event.title }}
-                                </div>
-                                {% if event.start_time %}
-                                    <div style="color: #6b7280; font-size: 7pt; margin-top: 1px;">{{ format_time_range(event.start_time, event.end_time) }}</div>
-                                {% endif %}
-                                {% if event.description and event.description|length <= 25 %}
-                                    <div class="event-description">{{ event.description }}</div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endif %}
-                </td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    
-    <!-- Legend for events with long descriptions or URLs -->
-    {% set legend_events = [] %}
-    {% set seen_event_ids = [] %}
-    {% for week in month_days %}
-        {% for day in week %}
-            {% if day != 0 and day in events %}
-                {% for event in events[day] %}
-                    {% if (should_show_in_legend(event.description, 25) or event.url) and event.id not in seen_event_ids %}
-                        {% set _ = legend_events.append(event) %}
-                        {% set _ = seen_event_ids.append(event.id) %}
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
-        {% endfor %}
-    {% endfor %}
-    
-    {% if legend_events %}
-    <div style="margin-top: 10px; page-break-inside: avoid;">
-        <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 5px; color: #1f2937;">Event Details</h3>
-        <div style="display: flex; gap: 20px;">
-            {% for column in range(3) %}
-                <div style="flex: 1; min-width: 0;">
-                    {% for event in legend_events %}
-                        {% if loop.index0 % 3 == column %}
-                            {% set pdf_colors = get_pdf_colors(event.color) %}
-                            <div style="margin-bottom: 6px; display: flex; align-items: flex-start;">
-                                <div style="width: 8px; height: 8px; background-color: {{ pdf_colors.bg }}; border-left: 3px solid {{ pdf_colors.border }}; margin-right: 6px; margin-top: 2px; flex-shrink: 0;"></div>
-                                <div style="min-width: 0;">
-                                    <div style="font-weight: 600; font-size: 8pt; color: #1f2937;">
-                                        {{ event.title }}
-                                    </div>
-                                    {% if event.start_time %}
-                                        <div style="font-weight: normal; color: #6b7280; font-size: 7pt; margin-top: 1px;">{{ format_time_range(event.start_time, event.end_time) }}</div>
-                                    {% endif %}
-                                    {% if event.description %}
-                                        <div style="font-size: 7pt; color: #4b5563; margin-top: 1px; word-wrap: break-word;">{{ event.description }}</div>
-                                    {% endif %}
-                                    {% if event.url %}
-                                        <div style="margin-top: 2px;">
-                                            <div style="font-size: 6pt; color: #3b82f6; margin-bottom: 2px; word-break: break-all;">{{ event.url }}</div>
-                                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={{ event.url | urlencode }}" 
-                                                 alt="QR Code" 
-                                                 style="width: 40px; height: 40px; border: 0.5px solid #d1d5db;">
+    <div class="main-container">
+        <div class="calendar-section">
+            <table class="calendar-grid">
+                <thead>
+                    <tr>
+                        <th>Sunday</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                        <th>Saturday</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in month_days %}
+                    <tr>
+                        {% for day in week %}
+                        <td {% if day == 0 %}class="empty-cell"{% endif %}>
+                            {% if day != 0 %}
+                                <div class="day-number">{{ day }}</div>
+                                {% if day in events %}
+                                    {% for event in events[day] %}
+                                    {% set pdf_colors = get_pdf_colors(event.color) %}
+                                    <div class="event" style="background-color: {{ pdf_colors.bg }}; border-left-color: {{ pdf_colors.border }};{% if event.is_multi_day %} border-right: 2px solid {{ pdf_colors.border }};{% endif %}">
+                                        <div class="event-title">
+                                            {{ event.title }}
                                         </div>
-                                    {% endif %}
-                                </div>
-                            </div>
+                                        {% if event.start_time %}
+                                            <div style="color: #6b7280; font-size: 7pt; margin-top: 1px;">{{ format_time_range(event.start_time, event.end_time) }}</div>
+                                        {% endif %}
+                                        {% if event.description and event.description|length <= 25 %}
+                                            <div class="event-description">{{ event.description }}</div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    
+        <!-- Event Details Sidebar -->
+        {% set legend_events = [] %}
+        {% set seen_event_ids = [] %}
+        {% for week in month_days %}
+            {% for day in week %}
+                {% if day != 0 and day in events %}
+                    {% for event in events[day] %}
+                        {% if (should_show_in_legend(event.description, 25) or event.url) and event.id not in seen_event_ids %}
+                            {% set _ = legend_events.append(event) %}
+                            {% set _ = seen_event_ids.append(event.id) %}
                         {% endif %}
                     {% endfor %}
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+        
+        {% if legend_events %}
+        <div class="details-section">
+            <div class="details-header">Event Details</div>
+            {% for event in legend_events %}
+                {% set pdf_colors = get_pdf_colors(event.color) %}
+                <div class="event-detail">
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 3px;">
+                        <div style="width: 8px; height: 8px; background-color: {{ pdf_colors.bg }}; border-left: 3px solid {{ pdf_colors.border }}; margin-right: 6px; margin-top: 2px; flex-shrink: 0;"></div>
+                        <div style="min-width: 0; flex: 1;">
+                            <div style="font-weight: 600; font-size: 8pt; color: #1f2937;">
+                                {{ event.title }}
+                            </div>
+                            {% if event.start_time %}
+                                <div style="font-weight: normal; color: #6b7280; font-size: 7pt; margin-top: 1px;">{{ format_time_range(event.start_time, event.end_time) }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if event.description %}
+                        <div style="font-size: 7pt; color: #4b5563; margin-bottom: 4px; word-wrap: break-word;">{{ event.description }}</div>
+                    {% endif %}
+                    {% if event.url %}
+                        <div style="margin-top: 2px; text-align: center;">
+                            <div style="font-size: 6pt; color: #3b82f6; margin-bottom: 3px; word-break: break-all;">{{ event.url }}</div>
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ event.url | urlencode }}" 
+                                 alt="QR Code" 
+                                 style="width: 50px; height: 50px; border: 0.5px solid #d1d5db;">
+                        </div>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>
+        {% endif %}
     </div>
-    {% endif %}
 </body>
 </html>
